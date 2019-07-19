@@ -7,70 +7,62 @@ from telegram import InlineQueryResultArticle, ParseMode, InputTextMessageConten
 from telegram.ext import Updater, InlineQueryHandler, CommandHandler
 from telegram.utils.helpers import escape_markdown
 
-# Enable logging
+import nlp_util
+
+
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=logging.INFO)
-
 logger = logging.getLogger(__name__)
+
+INFO_MESSAGES = {'start': 'Hi!\nThis bot currently supports only inline mode. Try it out in any chat!',
+                 'help': "Use this bot via inline mode. Type @"}
 
 
 def start(update, context):
     """Send a message when the command /start is issued."""
-    update.message.reply_text('Hi!')
+    update.message.reply_text(INFO_MESSAGES['start'])
 
 
 def help(update, context):
     """Send a message when the command /help is issued."""
-    update.message.reply_text('Help!')
+    update.message.reply_text(INFO_MESSAGES['help'])
 
 
 def inlinequery(update, context):
     """Handle the inline query."""
-    import nlp_util
-
-    query = update.inline_query.query
+    user = update.inline_query.from_user['username']
+    query = update.inline_query.query.replace(' ', '_')
+    logging.info(f"User @{user} asked for \"{query}\"")
     synonyms = nlp_util.find_synsets(query)
 
     query_results = []
     for synonym in synonyms:
-        _id = uuid4()
-        _title = synonym['name'].split('.')[0]
-        _desc = synonym['def']
-        _lemmas = str([l.name() for l in synonym['lemmas']])
-        _examples = '\n'.join(synonym['examples'])
-        _content = f"{_title}\n{_desc}\n\n{_examples}\n\nLemmas: {_lemmas}"
+        result_id = uuid4()
+        word = synonym['word']
+        pos = synonym['pos']
+        result_title = f"{word} ({pos})"
+        result_description = synonym['definition']
+        formatted_content = f"*{word}* _{pos}_\n{result_description}"
+        examples = '\n'.join(synonym['examples'])
+        if examples:
+            formatted_content = f"{formatted_content}\n\n_{examples}_"
+        related_words = ', '.join(synonym['related'])
+        if related_words:
+            formatted_content = f"{formatted_content}\n\nSee also: {related_words}"
 
         query_results.append(
-            InlineQueryResultArticle(id=_id,
-                                     title=_title,
-                                     description=_desc,
-                                     input_message_content=InputTextMessageContent(_content)))
-
-    # results = [
-    #     InlineQueryResultArticle(
-    #         id=uuid4(),
-    #         title="Caps",
-    #         input_message_content=InputTextMessageContent(
-    #             query.upper())),
-    #     InlineQueryResultArticle(
-    #         id=uuid4(),
-    #         title="Bold",
-    #         input_message_content=InputTextMessageContent(
-    #             "*{}*".format(escape_markdown(query)),
-    #             parse_mode=ParseMode.MARKDOWN)),
-    #     InlineQueryResultArticle(
-    #         id=uuid4(),
-    #         title="Italic",
-    #         input_message_content=InputTextMessageContent(
-    #             "_{}_".format(escape_markdown(query)),
-    #             parse_mode=ParseMode.MARKDOWN))]
+            InlineQueryResultArticle(id=result_id,
+                                     title=result_title,
+                                     description=result_description,
+                                     input_message_content=InputTextMessageContent(formatted_content,
+                                                                                   parse_mode=ParseMode.MARKDOWN)))
 
     update.inline_query.answer(query_results)
 
 
 def error(update, context):
     """Log Errors caused by Updates."""
-    logger.warning('Update "%s" caused error "%s"', update, context.error)
+    logger.warning(f"Update {update} caused error {context.error}")
 
 
 def main():
@@ -78,15 +70,13 @@ def main():
     # Make sure to set use_context=True to use the new context based callbacks
     # Post version 12 this will no longer be necessary
     from config import TOKEN
-    updater = Updater(TOKEN, use_context=True, request_kwargs={'proxy_url': 'socks5h://163.172.152.192:1080'})
+    updater = Updater(TOKEN, use_context=True)
 
     dp = updater.dispatcher
 
     dp.add_handler(CommandHandler("start", start))
     dp.add_handler(CommandHandler("help", help))
-
     dp.add_handler(InlineQueryHandler(inlinequery))
-
     dp.add_error_handler(error)
 
     updater.start_polling()
