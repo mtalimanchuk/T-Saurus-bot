@@ -15,7 +15,7 @@ def find_synsets(word):
         result = {"_wn_name": s.name(),
                   "_wn_lexname": s.lexname(),
                   "word": s.name().split('.')[0].replace('_', ' '),
-                  "pos": WN2HUMAN_POS_MAP.get(s.pos(), 'UNKNOWN PoS'),
+                  "pos": WN2HUMAN_POS_MAP.get(s.pos(), f"wn_{s.pos()}"),
                   "related": [l.name().replace('_', ' ') for l in s.lemmas() if l.name().split('.')[-1] != s.name().split('.')[0]],
                   # we don't need any other lemma data except for the name. or do we?
                   "definition": s.definition().replace("`", "'"),

@@ -15,7 +15,7 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 logger = logging.getLogger(__name__)
 
 INFO_MESSAGES = {'start': 'Hi!\nThis bot currently supports only inline mode. Try it out in any chat!',
-                 'help': "Use this bot via inline mode. Type @"}
+                 'help': "Use this bot via inline mode. Type\n@TsaurusBot _word or phrase_\nin any chat"}
 
 
 def start(update, context):
@@ -23,16 +23,16 @@ def start(update, context):
     update.message.reply_text(INFO_MESSAGES['start'])
 
 
-def help(update, context):
+def show_help(update, context):
     """Send a message when the command /help is issued."""
-    update.message.reply_text(INFO_MESSAGES['help'])
+    update.message.reply_text(INFO_MESSAGES['help'], parse_mode=ParseMode.MARKDOWN)
 
 
 def inlinequery(update, context):
     """Handle the inline query."""
     user = update.inline_query.from_user['username']
     query = update.inline_query.query.replace(' ', '_')
-    logging.info(f"User @{user} asked for \"{query}\"")
+    logging.info(f"User @{user} searched \"{query}\"")
     synonyms = nlp_util.find_synsets(query)
 
     query_results = []
@@ -75,7 +75,7 @@ def main():
     dp = updater.dispatcher
 
     dp.add_handler(CommandHandler("start", start))
-    dp.add_handler(CommandHandler("help", help))
+    dp.add_handler(CommandHandler("help", show_help))
     dp.add_handler(InlineQueryHandler(inlinequery))
     dp.add_error_handler(error)
 
