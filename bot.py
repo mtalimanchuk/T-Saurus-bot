@@ -3,10 +3,11 @@
 import logging
 from uuid import uuid4
 
-from telegram import InlineQueryResultArticle, ParseMode, InputTextMessageContent
+from telegram import InlineQueryResultArticle, ParseMode, InputTextMessageContent, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Updater, InlineQueryHandler, CommandHandler
-from telegram.utils.helpers import escape_markdown
+# from telegram.utils.helpers import escape_markdown
 
+import merriam_webster_api as mw
 import nlp_util
 
 
@@ -31,33 +32,20 @@ def show_help(update, context):
 def inlinequery(update, context):
     """Handle the inline query."""
     user = update.inline_query.from_user['username']
-    query = update.inline_query.query.replace(' ', '_')
-    logging.info(f"User @{user} searched \"{query}\"")
-    synonyms = nlp_util.find_synsets(query)
+    query = update.inline_query.query
+    if query != '':
+        logging.info(f"User @{user} searched \"{query}\"")
+        # synonyms = nlp_util.find_synsets(query)
+        query_results = []
+        for mwt_entry in mw.lookup_thesaurus(query):
+            query_results.append(
+                InlineQueryResultArticle(id=uuid4(),
+                                         title=mwt_entry.title,
+                                         description=mwt_entry.description,
+                                         input_message_content=InputTextMessageContent(mwt_entry.message, parse_mode=ParseMode.MARKDOWN),
+                                         reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('click1', callback_data='click1'), InlineKeyboardButton('click2', callback_data='click2')]])))
 
-    query_results = []
-    for synonym in synonyms:
-        result_id = uuid4()
-        word = synonym['word']
-        pos = synonym['pos']
-        result_title = f"{word} ({pos})"
-        result_description = synonym['definition']
-        formatted_content = f"*{word}* _{pos}_\n{result_description}"
-        examples = '\n'.join(synonym['examples'])
-        if examples:
-            formatted_content = f"{formatted_content}\n\n_{examples}_"
-        related_words = ', '.join(synonym['related'])
-        if related_words:
-            formatted_content = f"{formatted_content}\n\nSee also: {related_words}"
-
-        query_results.append(
-            InlineQueryResultArticle(id=result_id,
-                                     title=result_title,
-                                     description=result_description,
-                                     input_message_content=InputTextMessageContent(formatted_content,
-                                                                                   parse_mode=ParseMode.MARKDOWN)))
-
-    update.inline_query.answer(query_results)
+        update.inline_query.answer(query_results)
 
 
 def error(update, context):
@@ -69,8 +57,8 @@ def main():
     # Create the Updater and pass it your bot's token.
     # Make sure to set use_context=True to use the new context based callbacks
     # Post version 12 this will no longer be necessary
-    from config import TOKEN
-    updater = Updater(TOKEN, use_context=True)
+    from config import DEV_TOKEN, DEV_KWARGS
+    updater = Updater(DEV_TOKEN, use_context=True, request_kwargs=DEV_KWARGS)
 
     dp = updater.dispatcher
 
