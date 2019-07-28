@@ -8,7 +8,6 @@ from telegram.ext import Updater, InlineQueryHandler, CommandHandler
 # from telegram.utils.helpers import escape_markdown
 
 import merriam_webster_api as mw
-import nlp_util
 
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -35,15 +34,19 @@ def inlinequery(update, context):
     query = update.inline_query.query
     if query != '':
         logging.info(f"User @{user} searched \"{query}\"")
-        # synonyms = nlp_util.find_synsets(query)
         query_results = []
         for mwt_entry in mw.lookup_thesaurus(query):
+            text_message_content = InputTextMessageContent(mwt_entry.message, parse_mode=ParseMode.MARKDOWN)
+            inline_kb_buttons = [
+                [InlineKeyboardButton(f"\"{mwt_entry.headword}\" on Merriam-Webster.com 🌐", url=mwt_entry.headword_url)]
+            ]
+            inline_kb_markup = InlineKeyboardMarkup(inline_kb_buttons)
             query_results.append(
                 InlineQueryResultArticle(id=uuid4(),
                                          title=mwt_entry.title,
                                          description=mwt_entry.description,
-                                         input_message_content=InputTextMessageContent(mwt_entry.message, parse_mode=ParseMode.MARKDOWN),
-                                         reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('click1', callback_data='click1'), InlineKeyboardButton('click2', callback_data='click2')]])))
+                                         input_message_content=text_message_content,
+                                         reply_markup=inline_kb_markup))
 
         update.inline_query.answer(query_results)
 

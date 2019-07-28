@@ -44,6 +44,10 @@ class MWThesaurusEntry:
         return annotated_word
 
     @property
+    def headword(self):
+        return self._headword
+
+    @property
     def title(self):
         return f"{self._headword}   ({self._pos})"
 
@@ -66,7 +70,7 @@ class MWThesaurusEntry:
 
     @property
     def message(self):
-        msg_elements = [f"`{self._headword}`   _({self._pos})_\n",
+        msg_elements = [f"*{self._headword}*   _{self._pos}_\n",
                         f"{self.description}",
                         f"_{self.examples}_\n"]
         for list_type, list_content in self._content_dict.items():
@@ -74,14 +78,9 @@ class MWThesaurusEntry:
             msg_elements.extend([f"*{list_type.replace('_', ' ').upper()}*", content])
         return '\n'.join(msg_elements)
 
-    # def __str__(self):
-    #     header = f"{self._headword}   ({self._pos})"
-    #     description = f"{self._defining_text_list}"
-    #     formatted_string = f"{header}\n{description}"
-    #     for list_type, list_content in self._content_dict.items():
-    #         content = '\n'.join([', '.join(group) for group in list_content])
-    #         formatted_string = f"{formatted_string}\n{list_type.replace('_', ' ').upper()}\n{content}"
-    #     return f"{formatted_string}\n{'-' * 150}"
+    @property
+    def headword_url(self):
+        return f"https://www.merriam-webster.com/thesaurus/{self._headword.replace(' ', '%20')}"
 
 
 def lookup_thesaurus(word):
@@ -90,20 +89,22 @@ def lookup_thesaurus(word):
     response = session.get(url)
     word_data = response.json()
     for homograph in word_data:
-        headword = homograph['hwi']['hw']
-        pos = homograph['fl']
-        sseq = homograph['def'][0]['sseq']
-        for sense in sseq:
-            sense_type = sense[0][0]
-            sense_dict = sense[0][1]
-            # senses may also be:
-            # https://www.dictionaryapi.com/products/json#sec-2.sdsense
-            # https://www.dictionaryapi.com/products/json#sec-2.sen
-            mwt_entry = MWThesaurusEntry(headword, pos, sense_dict)
-            # print(mwt_entry.title)
-            # print(mwt_entry.description)
-            # print(mwt_entry.message)
-            yield mwt_entry
+        if homograph.get('hwi'):
+            headword = homograph['hwi']['hw']
+            pos = homograph['fl']
+            sseq = homograph['def'][0]['sseq']
+            for sense in sseq:
+                sense_type = sense[0][0]
+                sense_dict = sense[0][1]
+                # senses may also be:
+                # https://www.dictionaryapi.com/products/json#sec-2.sdsense
+                # https://www.dictionaryapi.com/products/json#sec-2.sen
+                mwt_entry = MWThesaurusEntry(headword, pos, sense_dict)
+                yield mwt_entry
+        # else:
+        #     # if word is missing, api returns a "did-you-mean?" list
+        #     did_you_mean = homograph
+        #     yield did_you_mean
 
 
 def lookup_dictionary(word):
