@@ -1,7 +1,15 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
+from enum import Enum, auto
+
 import requests
 
 from config import MW_DICTIONARY_API_KEY, MW_THESAURUS_API_KEY
+
+
+class MWThesaurusResponse(Enum):
+    CORRECT = auto()
+    DID_YOU_MEAN = auto()
+    NO_MATCH = auto()
 
 
 class MWThesaurusWordSenseEntry:
@@ -95,7 +103,7 @@ class MWThesaurusWordSenseEntry:
                         f"_{self.examples}_\n"]
         for list_type, list_content in self._content_dict.items():
             list_name = self.content_list_map[list_type]
-            content = '\n'.join([', '.join(word_group) for word_group in list_content])
+            content = ';\n'.join([', '.join(word_group) for word_group in list_content])
             msg_elements.extend([f"\n*{list_name}*", content])
         return '\n'.join(msg_elements)
 
@@ -108,8 +116,17 @@ def lookup_thesaurus(word):
     session = requests.Session()
     url = f"https://www.dictionaryapi.com/api/v3/references/thesaurus/json/{word.replace(' ', '%20')}?key={MW_THESAURUS_API_KEY}"
     response = session.get(url)
-    word_data = response.json()
-    for homograph in word_data:
+    response_data = response.json()
+    if not response_data:
+        return MWThesaurusResponse.NO_MATCH, []
+    elif all([isinstance(r, str) for r in response_data]):
+        return MWThesaurusResponse.DID_YOU_MEAN, response_data
+    else:
+        return MWThesaurusResponse.CORRECT, parse_response_dict(response_data)
+
+
+def parse_response_dict(response_data):
+    for homograph in response_data:
         headword = homograph['hwi']['hw']
         pos = homograph['fl']
         sseq = homograph['def'][0]['sseq']
@@ -121,18 +138,14 @@ def lookup_thesaurus(word):
             # https://www.dictionaryapi.com/products/json#sec-2.sen
             mwt_entry = MWThesaurusWordSenseEntry(headword, pos, sense_dict)
             yield mwt_entry
-        # else:
-        #     # if word is missing, api returns a "did-you-mean?" list
-        #     did_you_mean = homograph
-        #     yield did_you_mean
 
 
 def lookup_dictionary(word):
     session = requests.Session()
     url = f"https://www.dictionaryapi.com/api/v3/references/collegiate/json/{word.replace(' ', '%20')}?key={MW_DICTIONARY_API_KEY}"
     response = session.get(url)
-    word_data = response.json()
-    for meaning in word_data:
+    response_data = response.json()
+    for meaning in response_data:
         syns = meaning.get('syns')
         if syns:
             for syn in syns:
@@ -153,11 +166,16 @@ if __name__ == '__main__':
     # with open('wordlist.txt', 'r', encoding='utf-8') as checklist_f:
     #     wordlist = [w.strip('\n') for w in list(checklist_f)]
     #     for w in wordlist:
-    results = lookup_thesaurus('smashed')
-    for mwt_entry in results:
-        print(mwt_entry.title)
-        print(mwt_entry.description)
-        print(mwt_entry.examples)
-        print("-" * 10)
-        print(mwt_entry.message)
-        print("=" * 150)
+    result, entries = lookup_thesaurus('fhkfkfj')
+    if result == MWThesaurusResponse.CORRECT:
+        for mwt_entry in entries:
+            print(mwt_entry.title)
+            print(mwt_entry.description)
+            print(mwt_entry.examples)
+            print("-" * 10)
+            print(mwt_entry.message)
+            print("=" * 150)
+    elif result == MWThesaurusResponse.DID_YOU_MEAN:
+        print(f"Did you mean: {', '.join(entries)}?")
+    elif result == MWThesaurusResponse.NO_MATCH:
+        print(f"No matches found. Try again!")
