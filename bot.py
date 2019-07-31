@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+﻿#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import logging
 from uuid import uuid4
@@ -31,23 +31,27 @@ def show_help(update, context):
 def inlinequery(update, context):
     """Handle the inline query."""
     user = update.inline_query.from_user['username']
-    query = update.inline_query.query
-    if query != '':
+    query = ''.join(c for c in update.inline_query.query if c.isalnum() or c is ' ')
+    if query.strip() != '':
         logging.info(f"User @{user} searched \"{query}\"")
         query_results = []
         for mwt_entry in mw.lookup_thesaurus(query):
-            text_message_content = InputTextMessageContent(mwt_entry.message, parse_mode=ParseMode.MARKDOWN)
+            text_message_content = InputTextMessageContent(mwt_entry.message,
+                                                           parse_mode=ParseMode.MARKDOWN)
             inline_kb_buttons = [
-                [InlineKeyboardButton(f"\"{mwt_entry.headword}\" on Merriam-Webster.com 🌐", url=mwt_entry.headword_url)]
+                [InlineKeyboardButton(f"\"{mwt_entry.headword}\" on Merriam-Webster.com 🌐",
+                                      url=mwt_entry.headword_url)],
+                [InlineKeyboardButton(f"Other meanings of \"{mwt_entry.headword}\"",
+                                      switch_inline_query_current_chat=mwt_entry.headword)]
             ]
             inline_kb_markup = InlineKeyboardMarkup(inline_kb_buttons)
-            query_results.append(
-                InlineQueryResultArticle(id=uuid4(),
-                                         title=mwt_entry.title,
-                                         description=mwt_entry.description,
-                                         input_message_content=text_message_content,
-                                         reply_markup=inline_kb_markup))
-
+            result_article = InlineQueryResultArticle(
+                                id=uuid4(),
+                                title=mwt_entry.title,
+                                description=mwt_entry.description,
+                                input_message_content=text_message_content,
+                                reply_markup=inline_kb_markup)
+            query_results.append(result_article)
         update.inline_query.answer(query_results)
 
 

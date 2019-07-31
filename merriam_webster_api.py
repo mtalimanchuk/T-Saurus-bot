@@ -4,24 +4,25 @@ import requests
 from config import MW_DICTIONARY_API_KEY, MW_THESAURUS_API_KEY
 
 
-class MWThesaurusEntry:
+class MWThesaurusWordSenseEntry:
+    content_list_map = {
+        'syn_list': 'Synonyms',
+        'rel_list': 'Related Words',
+        'phrase_list': 'Phrases',
+        'near_list': 'Near Antonyms',
+        'ant_list': 'Antonyms'
+        }
+
     def __init__(self, headword, pos, sense_dict):
         self._headword = headword
         self._pos = pos
         self._raw_sense_dict = sense_dict   # just in case we need to extract other fields
         self._defining_text_list = sense_dict['dt']
-        self._content_dict = self._parse_thesaurus_content()
+        self._content_dict = self._parse_related_wordlists()
 
-    def _parse_thesaurus_content(self):
-        possible_content_lists = [
-            'syn_list',
-            'rel_list',
-            # 'ant_list',
-            # 'near_list',
-            'phrase_list'
-            ]
+    def _parse_related_wordlists(self):
         content = {}
-        for list_type in possible_content_lists:
+        for list_type in self.content_list_map.keys():
             if self._raw_sense_dict.get(list_type):
                 content[list_type] = []
                 for group in self._raw_sense_dict[list_type]:
@@ -29,7 +30,8 @@ class MWThesaurusEntry:
                     content[list_type].append(word_group)
         return content
 
-    def _parse_word_element(self, word_element):
+    @staticmethod
+    def _parse_word_element(word_element):
         wd = word_element.get('wd')
         annotated_word = wd
         if word_element.get('wvrs'):
@@ -37,28 +39,36 @@ class MWThesaurusEntry:
             annotated_word = f"{annotated_word} ({wvrs_annotation})"
         if word_element.get('wsls'):
             wsls_annotation = ', '.join(word_element['wsls'])
-            annotated_word = f"{annotated_word} [{wsls_annotation}]"
+            annotated_word = f"{annotated_word} [[{wsls_annotation}]]"
+            # double [[]] due to telegram not showing [] for some reason
         if word_element.get('wvbvrs', ''):
             wvbvrs_annotation = ', '.join([f"{note['wvbvl']} {note['wvbva']}" for note in word_element['wvbvrs']])
             annotated_word = f"{annotated_word} ({wvbvrs_annotation})"
         return annotated_word
+
+    def cleanup_mw_tags(property_getter):
+        def cleaner(*args, **kwargs):
+            replacements = [('{it}', ''),
+                            ('{/it}', ''),
+                            ('{ldquo}', '“'),
+                            ('{rdquo}', '”')]
+            result = property_getter(*args, **kwargs)
+            for rule in replacements:
+                result = result.replace(*rule)
+            return result
+        return cleaner
 
     @property
     def headword(self):
         return self._headword
 
     @property
-    def title(self):
-        return f"{self._headword}   ({self._pos})"
+    def pos(self):
+        return self._pos
 
     @property
-    def examples(self):
-        example_elements = []
-        for dt_element in self._defining_text_list:
-            if dt_element[0] == 'vis':
-                for vis_item in dt_element[1]:
-                    example_elements.append(f"//{vis_item['t']}")
-        return '\n'.join(example_elements)
+    def title(self):
+        return f"{self.headword}   ({self.pos})"
 
     @property
     def description(self):
@@ -69,18 +79,29 @@ class MWThesaurusEntry:
         return '\n'.join(desc_elements)
 
     @property
+    @cleanup_mw_tags
+    def examples(self):
+        example_elements = []
+        for dt_element in self._defining_text_list:
+            if dt_element[0] == 'vis':
+                for vis_item in dt_element[1]:
+                    example_elements.append(f"//{vis_item['t']}")
+        return '\n'.join(example_elements)
+
+    @property
     def message(self):
-        msg_elements = [f"*{self._headword}*   _{self._pos}_\n",
+        msg_elements = [f"*{self.headword}*   _{self.pos}_\n",
                         f"{self.description}",
                         f"_{self.examples}_\n"]
         for list_type, list_content in self._content_dict.items():
-            content = '\n'.join([', '.join(group) for group in list_content])
-            msg_elements.extend([f"*{list_type.replace('_', ' ').upper()}*", content])
+            list_name = self.content_list_map[list_type]
+            content = '\n'.join([', '.join(word_group) for word_group in list_content])
+            msg_elements.extend([f"\n*{list_name}*", content])
         return '\n'.join(msg_elements)
 
     @property
     def headword_url(self):
-        return f"https://www.merriam-webster.com/thesaurus/{self._headword.replace(' ', '%20')}"
+        return f"https://www.merriam-webster.com/thesaurus/{self.headword.replace(' ', '%20')}"
 
 
 def lookup_thesaurus(word):
@@ -89,18 +110,17 @@ def lookup_thesaurus(word):
     response = session.get(url)
     word_data = response.json()
     for homograph in word_data:
-        if homograph.get('hwi'):
-            headword = homograph['hwi']['hw']
-            pos = homograph['fl']
-            sseq = homograph['def'][0]['sseq']
-            for sense in sseq:
-                sense_type = sense[0][0]
-                sense_dict = sense[0][1]
-                # senses may also be:
-                # https://www.dictionaryapi.com/products/json#sec-2.sdsense
-                # https://www.dictionaryapi.com/products/json#sec-2.sen
-                mwt_entry = MWThesaurusEntry(headword, pos, sense_dict)
-                yield mwt_entry
+        headword = homograph['hwi']['hw']
+        pos = homograph['fl']
+        sseq = homograph['def'][0]['sseq']
+        for sense in sseq:
+            sense_type = sense[0][0]
+            sense_dict = sense[0][1]
+            # senses may also be:
+            # https://www.dictionaryapi.com/products/json#sec-2.sdsense
+            # https://www.dictionaryapi.com/products/json#sec-2.sen
+            mwt_entry = MWThesaurusWordSenseEntry(headword, pos, sense_dict)
+            yield mwt_entry
         # else:
         #     # if word is missing, api returns a "did-you-mean?" list
         #     did_you_mean = homograph
@@ -131,8 +151,13 @@ def lookup_dictionary(word):
 
 if __name__ == '__main__':
     # with open('wordlist.txt', 'r', encoding='utf-8') as checklist_f:
-    #     wordlist = [w.strip() for w in list(checklist_f)]
+    #     wordlist = [w.strip('\n') for w in list(checklist_f)]
     #     for w in wordlist:
-    #         lookup_thesaurus(w)
-
-    lookup_thesaurus('absolute')
+    results = lookup_thesaurus('smashed')
+    for mwt_entry in results:
+        print(mwt_entry.title)
+        print(mwt_entry.description)
+        print(mwt_entry.examples)
+        print("-" * 10)
+        print(mwt_entry.message)
+        print("=" * 150)
