@@ -4,7 +4,6 @@ import logging
 
 from telegram import ParseMode
 from telegram.ext import Updater, InlineQueryHandler, CommandHandler
-# from telegram.utils.helpers import escape_markdown
 
 import util.bot_tools as bt
 

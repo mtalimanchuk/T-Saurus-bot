@@ -171,20 +171,3 @@ def lookup_dictionary(word):
             additional_references = syn.get('sarefs')
             if additional_references:
                 print(f"Additional references: {additional_references}")
-
-
-if __name__ == '__main__':
-    #   for testing purposes
-    result, entries = lookup_thesaurus('word')
-    if result == MWThesaurusResponse.CORRECT:
-        for mwt_entry in entries:
-            print(mwt_entry.title)
-            print(mwt_entry.description)
-            print(mwt_entry.examples)
-            print("-" * 10)
-            print(mwt_entry.message)
-            print("=" * 150)
-    elif result == MWThesaurusResponse.DID_YOU_MEAN:
-        print(f"Did you mean: {', '.join(entries)}?")
-    elif result == MWThesaurusResponse.NO_MATCH:
-        print(f"No matches found. Try again!")

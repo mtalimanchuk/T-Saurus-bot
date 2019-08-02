@@ -6,10 +6,9 @@ from telegram import (InlineQueryResultArticle, InputTextMessageContent,
 from . import merriam_webster_api as mw
 
 
-def article_factory(title, desc, text_msg, kb_buttons=None, ncolumns=3):
+def article_factory(title, desc, text_msg, kb_buttons=None, ncolumns=1):
     msg_content = InputTextMessageContent(text_msg, parse_mode=ParseMode.MARKDOWN)
     buttons_list = kb_buttons
-    # btn is {'text': 'hello', 'switch_inline_query_current_chat': 'aaa'}
     buttons_grid = [buttons_list[n:n+ncolumns] for n in range(0, len(buttons_list), ncolumns)]
     inline_kb_markup = InlineKeyboardMarkup(buttons_grid)
     return InlineQueryResultArticle(id=uuid4(),
@@ -27,8 +26,8 @@ def ask_mw_thesaurus(query):
             desc = word_sense.description
             text_msg = word_sense.message
             kb_buttons = [
-                InlineKeyboardButton(f"{word_sense.headword} on Merriam-Webster.com 🌐", url=word_sense.headword_url),
-                InlineKeyboardButton(f"Other meanings of {word_sense.headword}", switch_inline_query_current_chat=word_sense.headword)
+                InlineKeyboardButton(f"\"{word_sense.headword}\" on Merriam-Webster.com 🌐", url=word_sense.headword_url),
+                InlineKeyboardButton(f"Other meanings of \"{word_sense.headword}\"", switch_inline_query_current_chat=word_sense.headword)
             ]
             yield article_factory(title, desc, text_msg, kb_buttons, ncolumns=1)
     elif mw_response_type == mw.MWThesaurusResponse.DID_YOU_MEAN:
