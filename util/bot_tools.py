@@ -22,7 +22,7 @@ def ask_mw_thesaurus(query):
     mw_response_type, content = mw.lookup_thesaurus(query)
     if mw_response_type == mw.MWThesaurusResponse.CORRECT:
         for word_sense in content:
-            title = word_sense.headword
+            title = word_sense.title
             desc = word_sense.description
             text_msg = word_sense.message
             kb_buttons = [
