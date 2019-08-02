@@ -9,7 +9,8 @@ import util.bot_tools as bt
 
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                    level=logging.INFO)
+                    level=logging.INFO,
+                    filename="main.log")
 logger = logging.getLogger(__name__)
 
 INFO_MESSAGES = {'start': 'Hi!\nThis bot currently supports only inline mode. Try it out in any chat!',
