@@ -45,8 +45,8 @@ def main():
     # Create the Updater and pass it your bot's token.
     # Make sure to set use_context=True to use the new context based callbacks
     # Post version 12 this will no longer be necessary
-    from config import DEV_TOKEN, DEV_KWARGS
-    updater = Updater(DEV_TOKEN, use_context=True, request_kwargs=DEV_KWARGS)
+    from config import BOT_TOKEN
+    updater = Updater(BOT_TOKEN, use_context=True)
 
     dp = updater.dispatcher
 
