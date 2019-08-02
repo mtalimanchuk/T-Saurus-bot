@@ -7,7 +7,6 @@ from telegram.ext import Updater, InlineQueryHandler, CommandHandler
 # from telegram.utils.helpers import escape_markdown
 
 import util.bot_tools as bt
-import util.merriam_webster_api as mw
 
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -33,9 +32,8 @@ def inlinequery(update, context):
     user = update.inline_query.from_user['username']
     query = ''.join(c for c in update.inline_query.query if c.isalnum() or c is ' ')
     if query.strip() != '':
-        logging.info(f"User @{user} searched \"{query}\"")
-        response_flag, results = mw.lookup_thesaurus(query)
-        query_results = bt._build_inline_results(query, response_flag, results)
+        logger.info(f"User @{user} searched \"{query}\"")
+        query_results = bt.ask_mw_thesaurus(query)
         update.inline_query.answer(query_results)
 
 
