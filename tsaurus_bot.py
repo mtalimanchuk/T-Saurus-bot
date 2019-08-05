@@ -3,7 +3,7 @@
 import logging
 
 from telegram import ParseMode
-from telegram.ext import Updater, InlineQueryHandler, CommandHandler
+from telegram.ext import Updater, InlineQueryHandler, InlineKeyboardMarkup, CommandHandler
 
 import util.bot_tools as bt
 
@@ -20,7 +20,8 @@ INFO_MESSAGES = {'start': 'Hi!\nThis bot currently supports only inline mode. Tr
 def start(update, context):
     """Send a message when the command /start is issued."""
     mw_logo = "https://dictionaryapi.com/images/info/branding-guidelines/MWLogo_LightBG_120x120_2x.png"
-    update.message.reply_photo(mw_logo, caption=INFO_MESSAGES['start'])
+    kb_markup = InlineKeyboardMarkup.from_button('Try in this chat', switch_inline_query_current_chat='')
+    update.message.reply_photo(mw_logo, caption=INFO_MESSAGES['start'], reply_markup=kb_markup)
 
 
 def show_help(update, context):
