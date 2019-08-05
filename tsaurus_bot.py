@@ -19,7 +19,7 @@ INFO_MESSAGES = {'start': 'Hi!\nThis bot currently supports only inline mode. Tr
 
 def start(update, context):
     """Send a message when the command /start is issued."""
-    mw_logo = "https://dictionaryapi.com/images/info/branding-guidelines/MWLogo_DarkBG_120x120_2x.png"
+    mw_logo = "https://dictionaryapi.com/images/info/branding-guidelines/MWLogo_LightBG_120x120_2x.png"
     update.message.reply_photo(mw_logo, caption=INFO_MESSAGES['start'])
 
 
