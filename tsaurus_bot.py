@@ -2,8 +2,8 @@
 # -*- coding: utf-8 -*-
 import logging
 
-from telegram import ParseMode
-from telegram.ext import Updater, InlineQueryHandler, InlineKeyboardMarkup, CommandHandler
+from telegram import ParseMode, InlineKeyboardMarkup
+from telegram.ext import Updater, InlineQueryHandler, CommandHandler
 
 import util.bot_tools as bt
 
